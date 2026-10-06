@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: forgeflow-worker
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: forgeflow-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: dev.forgeflow.common.event
+        spring.json.use.type.headers: false
+        spring.json.type.mapping: >-
+          pipeline.queued:dev.forgeflow.common.event.PipelineQueuedEvent,
+          pipeline.started:dev.forgeflow.common.event.PipelineStartedEvent,
+          pipeline.heartbeat:dev.forgeflow.common.event.PipelineHeartbeatEvent,
+          pipeline.finished:dev.forgeflow.common.event.PipelineFinishedEvent
+    listener:
+      ack-mode: manual_immediate
+    template:
+      observation-enabled: true
+    listener-container-factory:
+      observation-enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: 1.0
+
+server:
+  port: 8081
+
+forgeflow:
+  version: 0.1.0-SNAPSHOT
+  environment: ${FORGEFLOW_ENV:local}
+
+  kafka:
+    topics:
+      pipeline-queued: pipeline.queued
+      pipeline-started: pipeline.started
+      pipeline-heartbeat: pipeline.heartbeat
+      pipeline-finished: pipeline.finished
+
+  job:
+    timeout-seconds: ${FORGEFLOW_JOB_TIMEOUT_SECONDS:900}
+    memory-limit: ${FORGEFLOW_JOB_MEMORY_LIMIT:512m}
+    cpu-limit: ${FORGEFLOW_JOB_CPU_LIMIT:1.0}
+    heartbeat-interval-seconds: ${FORGEFLOW_HEARTBEAT_INTERVAL_SECONDS:20}
+
+  storage:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:forgeflow}
+    secret-key: ${MINIO_SECRET_KEY:forgeflow-secret}
+    region: us-east-1
+    bucket: ${FORGEFLOW_ARTIFACT_BUCKET:forgeflow-logs}

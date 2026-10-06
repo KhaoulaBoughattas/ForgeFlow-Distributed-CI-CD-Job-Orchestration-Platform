@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgeflow-worker
+  namespace: forgeflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: forgeflow-worker }
+  template:
+    metadata:
+      labels: { app: forgeflow-worker }
+    spec:
+      containers:
+        - name: worker
+          image: forgeflow-worker:latest
+          ports: [{ containerPort: 8081 }]
+          envFrom:
+            - configMapRef: { name: forgeflow-config }
+          env:
+            - { name: MINIO_ROOT_USER, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: MINIO_ROOT_USER } } }
+            - { name: MINIO_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: MINIO_ROOT_PASSWORD } } }
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "2", memory: "2Gi" }
+          volumeMounts:
+            # SECURITY TRADE-OFF (documented, not accidental): the worker shells out to the
+            # HOST's Docker daemon to run isolated build containers (docker-outside-of-docker).
+            # Mounting the host's /var/run/docker.sock gives any process in this pod root-
+            # equivalent control over the node's Docker daemon -- a real container-escape
+            # vector. A production deployment should replace this with a dedicated, properly
+            # sandboxed build-execution backend (e.g. Kubernetes Jobs with gVisor/Kata, or a
+            # remote build service) instead of host-socket access. Kept as-is here because this
+            # is a portfolio project and the trade-off is called out explicitly in the README.
+            - { name: docker-sock, mountPath: /var/run/docker.sock }
+      volumes:
+        - name: docker-sock
+          hostPath: { path: /var/run/docker.sock, type: Socket }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgeflow-worker
+  namespace: forgeflow
+spec:
+  selector: { app: forgeflow-worker }
+  ports: [{ port: 8081, targetPort: 8081 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: forgeflow-worker-hpa
+  namespace: forgeflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: forgeflow-worker
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

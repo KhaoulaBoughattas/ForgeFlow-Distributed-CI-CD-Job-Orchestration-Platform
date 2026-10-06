@@ -1,0 +1,66 @@
+{
+  "title": "ForgeFlow Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP request rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"forgeflow-api\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "JVM heap used",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\",job=~\"forgeflow-.*\"}",
+          "legendFormat": "{{job}} - {{id}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Pipelines created / queued (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(forgeflow_pipelines_created_total[5m])",
+          "legendFormat": "created"
+        },
+        {
+          "expr": "rate(forgeflow_pipelines_queued_total[5m])",
+          "legendFormat": "queued"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Pipelines succeeded / failed (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(forgeflow_pipelines_succeeded_total[5m])",
+          "legendFormat": "succeeded"
+        },
+        {
+          "expr": "rate(forgeflow_pipelines_failed_total[5m])",
+          "legendFormat": "failed"
+        }
+      ]
+    }
+  ]
+}

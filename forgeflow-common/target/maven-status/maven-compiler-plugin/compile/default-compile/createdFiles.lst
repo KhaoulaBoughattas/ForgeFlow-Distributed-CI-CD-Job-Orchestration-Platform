@@ -1,0 +1,4 @@
+dev\forgeflow\common\event\PipelineFinishedEvent.class
+dev\forgeflow\common\event\PipelineHeartbeatEvent.class
+dev\forgeflow\common\event\PipelineStartedEvent.class
+dev\forgeflow\common\event\PipelineQueuedEvent.class

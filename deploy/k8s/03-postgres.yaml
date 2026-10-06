@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: forgeflow-postgres-pvc
+  namespace: forgeflow
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgeflow-postgres
+  namespace: forgeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: forgeflow-postgres }
+  template:
+    metadata:
+      labels: { app: forgeflow-postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: POSTGRES_DB } } }
+            - { name: POSTGRES_USER, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: POSTGRES_USER } } }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: POSTGRES_PASSWORD } } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data, subPath: pgdata }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: forgeflow-postgres-pvc }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgeflow-postgres
+  namespace: forgeflow
+spec:
+  selector: { app: forgeflow-postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]

@@ -1,0 +1,107 @@
+spring:
+  application:
+    name: forgeflow-api
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/forgeflow}
+    username: ${DB_USER:forgeflow}
+    password: ${DB_PASSWORD:forgeflow}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: forgeflow-api
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: dev.forgeflow.common.event
+        spring.json.use.type.headers: false
+        spring.json.type.mapping: >-
+          pipeline.queued:dev.forgeflow.common.event.PipelineQueuedEvent,
+          pipeline.started:dev.forgeflow.common.event.PipelineStartedEvent,
+          pipeline.heartbeat:dev.forgeflow.common.event.PipelineHeartbeatEvent,
+          pipeline.finished:dev.forgeflow.common.event.PipelineFinishedEvent
+    listener:
+      ack-mode: manual_immediate
+    template:
+      observation-enabled: true
+    listener-container-factory:
+      observation-enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: 1.0
+
+server:
+  port: 8080
+
+forgeflow:
+  version: 0.1.0-SNAPSHOT
+  environment: ${FORGEFLOW_ENV:local}
+  webhook-base-url: ${FORGEFLOW_WEBHOOK_BASE_URL:http://localhost:8080}
+  frontend-origin: ${FORGEFLOW_FRONTEND_ORIGIN:http://localhost:5173}
+
+  security:
+    jwt:
+      secret: ${FORGEFLOW_JWT_SECRET:change-this-to-a-long-random-value-in-every-real-environment}
+      expiration-minutes: ${FORGEFLOW_JWT_EXPIRATION_MINUTES:60}
+    rate-limit-enabled: ${FORGEFLOW_RATE_LIMIT_ENABLED:true}
+    webhook-encryption-key: ${FORGEFLOW_WEBHOOK_ENCRYPTION_KEY:change-this-passphrase-in-every-real-environment}
+
+  kafka:
+    topics:
+      pipeline-queued: pipeline.queued
+      pipeline-started: pipeline.started
+      pipeline-heartbeat: pipeline.heartbeat
+      pipeline-finished: pipeline.finished
+
+  pipeline:
+    reaper-enabled: ${FORGEFLOW_REAPER_ENABLED:true}
+    reaper-interval-ms: 15000
+    heartbeat-stale-after-seconds: 90
+    retry-delay-seconds: 30
+
+  storage:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:forgeflow}
+    secret-key: ${MINIO_SECRET_KEY:forgeflow-secret}
+    region: us-east-1
+    bucket: ${FORGEFLOW_ARTIFACT_BUCKET:forgeflow-logs}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

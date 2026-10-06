@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: forgeflow-minio-pvc
+  namespace: forgeflow
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgeflow-minio
+  namespace: forgeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: forgeflow-minio }
+  template:
+    metadata:
+      labels: { app: forgeflow-minio }
+    spec:
+      containers:
+        - name: minio
+          image: cgr.dev/chainguard/minio:latest
+          args: ["server", "/data"]
+          ports:
+            - { containerPort: 9000 }
+          env:
+            - { name: MINIO_ROOT_USER, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: MINIO_ROOT_USER } } }
+            - { name: MINIO_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: forgeflow-secrets, key: MINIO_ROOT_PASSWORD } } }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: forgeflow-minio-pvc }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgeflow-minio
+  namespace: forgeflow
+spec:
+  selector: { app: forgeflow-minio }
+  ports: [{ port: 9000, targetPort: 9000 }]

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgeflow-frontend
+  namespace: forgeflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: forgeflow-frontend }
+  template:
+    metadata:
+      labels: { app: forgeflow-frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: forgeflow-frontend:latest
+          ports: [{ containerPort: 80 }]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgeflow-frontend
+  namespace: forgeflow
+spec:
+  selector: { app: forgeflow-frontend }
+  ports: [{ port: 80, targetPort: 80 }]

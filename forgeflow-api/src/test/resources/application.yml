@@ -1,0 +1,10 @@
+forgeflow:
+  security:
+    jwt:
+      secret: test-only-secret-not-for-production-use-at-all-1234567890
+      expiration-minutes: 60
+    rate-limit-enabled: false
+    webhook-encryption-key: test-only-webhook-encryption-passphrase
+
+  pipeline:
+    reaper-enabled: false
